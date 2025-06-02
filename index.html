@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Frontier Models Regulatory Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --primary: #1a2233;
+      --secondary: #0077b6;
+      --accent: #f0f4f8;
+      --header: #eaf1fb;
+      --table-header: #f5f6fa;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --danger: #e74c3c;
+      --info: #3498db;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--accent);
+      margin: 0;
+      color: var(--primary);
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      padding: 32px 5vw;
+      min-height: 100vh;
+      background: var(--accent);
+    }
+    .filter-panel {
+      background: #fff;
+      padding: 28px 22px;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+      min-width: 260px;
+    }
+    .filter-panel h3 {
+      margin-top: 0;
+      color: var(--secondary);
+    }
+    .filter-group label {
+      display: block;
+      margin: 14px 0;
+      font-size: 1.08em;
+    }
+    .viz-container {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(44, 62, 80, 0.05);
+    }
+    .comparison-table th {
+      background: var(--table-header);
+      color: var(--primary);
+      font-weight: bold;
+      padding: 14px 10px;
+      border-bottom: 2px solid #e0e6ed;
+      text-align: left;
+    }
+    .comparison-table td {
+      padding: 14px 10px;
+      border-bottom: 1px solid #f0f4f8;
+      vertical-align: top;
+    }
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+    .flag {
+      font-size: 1.5em;
+      margin-right: 7px;
+      vertical-align: middle;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.95em;
+      color: #fff;
+      margin-right: 4px;
+    }
+    .badge-success { background: var(--success);}
+    .badge-warning { background: var(--warning);}
+    .badge-danger { background: var(--danger);}
+    .badge-info { background: var(--info);}
+    .timeline {
+      display: flex;
+      overflow-x: auto;
+      gap: 20px;
+      padding-bottom: 10px;
+    }
+    .timeline-item {
+      flex: 0 0 270px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 18px 16px;
+      box-shadow: 0 2px 6px rgba(44,62,80,0.07);
+      border-left: 6px solid var(--secondary);
+      min-height: 110px;
+    }
+    .timeline-item h4 {
+      margin: 0 0 6px 0;
+      font-size: 1.08em;
+      color: var(--secondary);
+    }
+    .risk-matrix {
+      margin-top: 16px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(44,62,80,0.07);
+      width: 430px;
+      max-width: 100%;
+    }
+    .risk-matrix-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      grid-template-rows: repeat(4, 40px);
+      gap: 2px;
+      margin-top: 10px;
+      position: relative;
+    }
+    .matrix-label {
+      font-size: 0.93em;
+      color: var(--secondary);
+      position: absolute;
+    }
+    .matrix-label.y {
+      left: -65px;
+      top: 70px;
+      transform: rotate(-90deg);
+      width: 120px;
+      text-align: center;
+    }
+    .matrix-label.x {
+      left: 90px;
+      top: 185px;
+      width: 170px;
+      text-align: center;
+    }
+    .matrix-point {
+      font-size: 1.3em;
+      text-align: center;
+      line-height: 40px;
+      background: var(--header);
+      border-radius: 50%;
+      border: 2px solid var(--secondary);
+      grid-column: var(--col);
+      grid-row: var(--row);
+      margin: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .matrix-point:hover {
+      background: var(--secondary);
+      color: #fff;
+    }
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px 2vw;
+      }
+      .viz-container { gap: 18px; }
+    }
+    @media (max-width: 600px) {
+      .timeline-item { flex-basis: 85vw; }
+      .risk-matrix { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+  <!-- Filter Panel -->
+  <div class="filter-panel">
+    <h3><i class="fas fa-filter"></i> Filter Criteria</h3>
+    <div class="filter-group">
+      <label><input type="checkbox" class="tech-filter" value="compute" checked> Training Compute</label>
+      <label><input type="checkbox" class="tech-filter" value="parameters" checked> Model Parameters</label>
+      <label><input type="checkbox" class="tech-filter" value="data" checked> Data Scope</label>
+      <label><input type="checkbox" class="tech-filter" value="risk" checked> Risk-Based</label>
+      <label><input type="checkbox" class="tech-filter" value="generalization" checked> Generalization</label>
+      <label><input type="checkbox" class="tech-filter" value="unpredictability" checked> Unpredictability</label>
+    </div>
+    <hr>
+    <p style="font-size:0.96em;color:#888;">
+      <b>Legend:</b><br>
+      <span class="badge badge-success">Active</span> In force<br>
+      <span class="badge badge-warning">Draft</span> Not yet in force<br>
+      <span class="badge badge-info">Guidance</span> Voluntary/Non-binding
+    </p>
+  </div>
+
+  <!-- Visualization Area -->
+  <div class="viz-container">
+    <!-- Jurisdiction Comparison -->
+    <table class="comparison-table" id="reg-table">
+      <thead>
+        <tr>
+          <th>Jurisdiction</th>
+          <th>Regulatory Body</th>
+          <th>Key Legislation / Policy</th>
+          <th>Definition Highlights</th>
+          <th>Technical Inputs</th>
+          <th>Risk Focus</th>
+          <th>Enforcement</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-tech="compute risk unpredictability">
+          <td><span class="flag">🇺🇸</span>United States</td>
+          <td>Department of Commerce (BIS)</td>
+          <td>
+            Executive Order 14110<br>
+            BIS Framework (2025)
+          </td>
+          <td>
+            Dual-use foundation models with <b>>10²⁶ FLOP</b> or specialized risk capabilities.
+          </td>
+          <td>
+            <b>Compute:</b> >10²⁶ FLOP<br>
+            <b>Parameters:</b> Tens of billions<br>
+            <b>Data:</b> Broad, including biological/chemical
+          </td>
+          <td>National Security, CBRN risk</td>
+          <td>Export licensing, reporting</td>
+          <td><span class="badge badge-success">Active</span></td>
+        </tr>
+        <tr data-tech="compute parameters risk generalization">
+          <td><span class="flag">🇪🇺</span>European Union</td>
+          <td>European Commission</td>
+          <td>
+            EU AI Act (2025)
+          </td>
+          <td>
+            General-purpose AI models with systemic risk assessed via <b>>10²⁵ FLOP</b> training and high-impact capabilities.
+          </td>
+          <td>
+            <b>Compute:</b> >10²⁵ FLOP<br>
+            <b>Parameters:</b> High<br>
+            <b>Generalization:</b> Broad applicability
+          </td>
+          <td>Societal Impact, Systemic Risk</td>
+          <td>Conformity assessments, fines</td>
+          <td><span class="badge badge-success">Active</span></td>
+        </tr>
+        <tr data-tech="data risk">
+          <td><span class="flag">🇨🇳</span>China</td>
+          <td>Cyberspace Administration</td>
+          <td>
+            Generative AI Interim Measures
+          </td>
+          <td>
+            Content security and alignment with socialist values.
+          </td>
+          <td>
+            <b>Data:</b> Strict localization<br>
+            <b>Compute:</b> Not specified
+          </td>
+          <td>Content Security, Social Stability</td>
+          <td>Pre-approval, content control</td>
+          <td><span class="badge badge-success">Active</span></td>
+        </tr>
+        <tr data-tech="risk generalization">
+          <td><span class="flag">🇸🇬</span>Singapore</td>
+          <td>IMDA</td>
+          <td>
+            Model AI Governance Framework
+          </td>
+          <td>
+            Risk-proportionate governance emphasizing transparency.
+          </td>
+          <td>
+            <b>Parameters:</b> Not strict<br>
+            <b>Risk:</b> Voluntary for low-risk
+          </td>
+          <td>Transparency, Governance</td>
+          <td>Voluntary compliance</td>
+          <td><span class="badge badge-info">Guidance</span></td>
+        </tr>
+        <tr data-tech="generalization unpredictability">
+          <td><span class="flag">🇬🇧</span>United Kingdom</td>
+          <td>Office for AI</td>
+          <td>
+            UK AI Strategy
+          </td>
+          <td>
+            Trustworthy AI and risk management, sector-specific guidance.
+          </td>
+          <td>
+            <b>Generalization:</b> Sectoral<br>
+            <b>Unpredictability:</b> Addressed in guidance
+          </td>
+          <td>Trustworthy AI, Innovation</td>
+          <td>Guidance, sectoral regulation</td>
+          <td><span class="badge badge-info">Guidance</span></td>
+        </tr>
+        <tr data-tech="compute parameters risk generalization unpredictability">
+          <td><span class="flag">🇯🇵</span>Japan</td>
+          <td>Ministry of Economy, Trade and Industry (METI)</td>
+          <td>
+            AI Governance Guidelines (2024)
+          </td>
+          <td>
+            Emphasis on safety, transparency, and adaptability for advanced AI.
+          </td>
+          <td>
+            <b>Compute:</b> Not fixed<br>
+            <b>Parameters:</b> Adaptive<br>
+            <b>Risk:</b> Emphasis on unpredictable outcomes
+          </td>
+          <td>Safety, Transparency</td>
+          <td>Guidance, sectoral codes</td>
+          <td><span class="badge badge-warning">Draft</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Regulatory Timeline -->
+    <div>
+      <div style="font-weight:bold;font-size:1.1em;margin-bottom:7px;color:var(--secondary)">
+        Regulatory Timeline
+      </div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <h4>2023: EU AI Act</h4>
+          <p>First systemic risk framework for general-purpose AI.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>2024: U.S. EO 14110</h4>
+          <p>Dual-use foundation model controls, export rules.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>2024: China Interim Measures</h4>
+          <p>Content security and model registration for generative AI.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>2024: Singapore AI Governance</h4>
+          <p>Risk-proportionate, transparency-focused framework.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>2024: Japan AI Guidelines (Draft)</h4>
+          <p>Emphasis on adaptability and unpredictable risks.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk Matrix -->
+    <div class="risk-matrix">
+      <div class="risk-matrix-title">Risk Philosophy Matrix</div>
+      <div style="position: relative;">
+        <div class="matrix-label y">Regulatory Strictness ⬆</div>
+        <div class="matrix-label x">Technical Complexity ⟶</div>
+        <div class="matrix-grid">
+          <div class="matrix-point" style="grid-column: 4; grid-row: 2;" title="US: High complexity, strict enforcement">🇺🇸</div>
+          <div class="matrix-point" style="grid-column: 3; grid-row: 2;" title="EU: High complexity, moderate strictness">🇪🇺</div>
+          <div class="matrix-point" style="grid-column: 2; grid-row: 1;" title="China: Lower technical, very strict">🇨🇳</div>
+          <div class="matrix-point" style="grid-column: 2; grid-row: 3;" title="Singapore: Moderate complexity, low strictness">🇸🇬</div>
+          <div class="matrix-point" style="grid-column: 1; grid-row: 3;" title="UK: Low complexity, guidance-based">🇬🇧</div>
+          <div class="matrix-point" style="grid-column: 3; grid-row: 3;" title="Japan: Adaptive, moderate strictness">🇯🇵</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tech-filter').forEach(filter => {
+  filter.addEventListener('change', () => {
+    const selectedTech = Array.from(document.querySelectorAll('.tech-filter:checked'))
+      .map(checkbox => checkbox.value);
+    document.querySelectorAll('.comparison-table tbody tr').forEach(row => {
+      const rowTech = row.dataset.tech ? row.dataset.tech.split(' ') : [];
+      const match = selectedTech.length === 0 || selectedTech.some(tech => rowTech.includes(tech));
+      row.style.display = match ? '' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>
